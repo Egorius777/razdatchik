@@ -1,4 +1,4 @@
-import { Bot } from "grammy";
+import { Bot, webhookCallback } from "grammy";
 import { prisma } from "@/lib/db";
 import { getPublicAppUrl } from "@/lib/telegram";
 
@@ -50,11 +50,6 @@ function getBot(): Bot {
   return botInstance;
 }
 
-export async function POST(request: Request) {
-  const bot = getBot();
-  const update = await request.json();
-  await bot.handleUpdate(update);
-  return new Response("OK");
-}
+export const POST = (request: Request) => webhookCallback(getBot(), "std/http")(request);
 
 export const GET = () => Response.json({ ok: true, bot: "razdatchik" });
