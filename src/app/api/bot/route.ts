@@ -53,12 +53,18 @@ function getBot(): Bot {
 let initPromise: Promise<void> | null = null;
 
 export async function POST(request: Request) {
-  const bot = getBot();
-  if (!initPromise) initPromise = bot.init();
-  await initPromise;
-  const update = await request.json();
-  await bot.handleUpdate(update);
-  return new Response("OK");
+  try {
+    const bot = getBot();
+    if (!initPromise) initPromise = bot.init();
+    await initPromise;
+    const update = await request.json();
+    await bot.handleUpdate(update);
+    return new Response("OK");
+  } catch (error) {
+    console.error("bot webhook error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return new Response(message, { status: 500 });
+  }
 }
 
 export const GET = () => Response.json({ ok: true, bot: "razdatchik" });
