@@ -1,0 +1,241 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  Distributor
+  Tutor
+}
+
+enum MembershipStatus {
+  Active
+  Invited
+  Removed
+}
+
+enum CommissionType {
+  Percent
+  Fixed
+}
+
+enum StudentStatus {
+  Trial
+  Active
+  Paused
+  Archived
+}
+
+enum LessonStatus {
+  Planned
+  Done
+  Cancelled
+  NoShow
+}
+
+enum PaymentStatus {
+  Reported
+  Confirmed
+  Disputed
+}
+
+enum PayoutStatus {
+  Pending
+  Paid
+}
+
+model Workspace {
+  id                 String   @id @default(cuid())
+  name               String
+  ownerUserId        String
+  cardDetails        String?
+  settlementWeekday  Int      @default(1)
+  createdAt          DateTime @default(now())
+
+  owner       User         @relation("WorkspaceOwner", fields: [ownerUserId], references: [id])
+  memberships Membership[]
+  invites     Invite[]
+  students    Student[]
+  lessons     Lesson[]
+  payments    Payment[]
+  payouts     Payout[]
+  receipts    ReceiptFile[]
+}
+
+model User {
+  id         String   @id @default(cuid())
+  telegramId BigInt   @unique
+  firstName  String
+  lastName   String?
+  username   String?
+  photoUrl   String?
+  createdAt  DateTime @default(now())
+
+  ownedWorkspaces Workspace[]   @relation("WorkspaceOwner")
+  memberships     Membership[]
+  invitesCreated  Invite[]      @relation("InviteCreator")
+  invitesUsed     Invite[]      @relation("InviteUsedBy")
+  studentsTutored Student[]     @relation("StudentTutor")
+  lessonsCreated  Lesson[]      @relation("LessonCreator")
+  lessonsTutored  Lesson[]      @relation("LessonTutor")
+  paymentsReported Payment[]    @relation("PaymentReporter")
+  paymentsConfirmed Payment[]   @relation("PaymentConfirmer")
+  payoutsPaid     Payout[]      @relation("PayoutPaidBy")
+  receiptsUploaded ReceiptFile[] @relation("ReceiptUploader")
+}
+
+model Membership {
+  id          String           @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        Role
+  status      MembershipStatus @default(Active)
+  createdAt   DateTime         @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Invite {
+  id          String    @id @default(cuid())
+  workspaceId String
+  code        String    @unique
+  createdById String
+  expiresAt   DateTime?
+  usedById    String?
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("InviteCreator", fields: [createdById], references: [id])
+  usedBy    User?     @relation("InviteUsedBy", fields: [usedById], references: [id])
+}
+
+model Student {
+  id               String         @id @default(cuid())
+  workspaceId      String
+  tutorId          String
+  name             String
+  contact          String?
+  notes            String?
+  defaultPrice     Decimal        @db.Decimal(12, 0)
+  commissionType   CommissionType
+  commissionValue  Decimal        @db.Decimal(12, 0)
+  status           StudentStatus  @default(Active)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tutor     User      @relation("StudentTutor", fields: [tutorId], references: [id])
+  lessons   Lesson[]
+  payments  Payment[]
+
+  @@index([workspaceId, tutorId])
+}
+
+model Lesson {
+  id                String       @id @default(cuid())
+  workspaceId       String
+  studentId         String
+  tutorId           String
+  scheduledAt       DateTime
+  status            LessonStatus @default(Planned)
+  isTrial           Boolean      @default(false)
+  price             Decimal      @db.Decimal(12, 0)
+  commissionType    CommissionType
+  commissionValue   Decimal      @db.Decimal(12, 0)
+  commissionAmount  Decimal      @db.Decimal(12, 0)
+  tutorAmount       Decimal      @db.Decimal(12, 0)
+  notes             String?
+  createdById       String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  student   Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  tutor     User           @relation("LessonTutor", fields: [tutorId], references: [id])
+  createdBy User           @relation("LessonCreator", fields: [createdById], references: [id])
+  payments  PaymentLesson[]
+
+  @@index([workspaceId, tutorId, scheduledAt])
+  @@index([studentId])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  workspaceId   String
+  studentId     String
+  tutorId       String
+  amount        Decimal       @db.Decimal(12, 0)
+  status        PaymentStatus @default(Reported)
+  receiptFileId String?
+  reportedById  String
+  reportedAt    DateTime      @default(now())
+  confirmedById String?
+  confirmedAt   DateTime?
+  expectedAt    DateTime?
+  note          String?
+
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  student     Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  tutor       User           @relation("PaymentReporter", fields: [reportedById], references: [id])
+  confirmedBy User?          @relation("PaymentConfirmer", fields: [confirmedById], references: [id])
+  receipt     ReceiptFile?   @relation(fields: [receiptFileId], references: [id])
+  lessons     PaymentLesson[]
+
+  @@index([workspaceId, status])
+  @@index([tutorId])
+}
+
+model PaymentLesson {
+  paymentId String
+  lessonId  String
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  lesson  Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@id([paymentId, lessonId])
+}
+
+model Payout {
+  id               String       @id @default(cuid())
+  workspaceId      String
+  tutorId          String
+  periodStart      DateTime     @db.Date
+  periodEnd        DateTime     @db.Date
+  gross            Decimal      @db.Decimal(12, 0)
+  commissionTotal  Decimal      @db.Decimal(12, 0)
+  netAmount        Decimal      @db.Decimal(12, 0)
+  lessonCount      Int
+  status           PayoutStatus @default(Pending)
+  paidAt           DateTime?
+  paidById         String?
+  createdAt        DateTime     @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  paidBy    User?     @relation("PayoutPaidBy", fields: [paidById], references: [id])
+
+  @@unique([workspaceId, tutorId, periodStart])
+  @@index([workspaceId, periodStart])
+}
+
+model ReceiptFile {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  path         String
+  mime         String
+  size         Int
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  uploadedBy User      @relation("ReceiptUploader", fields: [uploadedById], references: [id])
+  payments   Payment[]
+}
