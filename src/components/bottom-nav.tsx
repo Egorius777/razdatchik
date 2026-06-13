@@ -10,6 +10,7 @@ import {
   Settings,
   History,
   GraduationCap,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ type Role = "Distributor" | "Tutor";
 
 const tutorTabs = [
   { href: "/", label: "Главная", icon: Home },
+  { href: "/schedule", label: "Расписание", icon: CalendarDays },
   { href: "/students", label: "Ученики", icon: GraduationCap },
   { href: "/history", label: "История", icon: History },
   { href: "/settings", label: "Ещё", icon: Settings },
