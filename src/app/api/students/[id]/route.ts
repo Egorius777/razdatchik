@@ -5,6 +5,7 @@ import { serializeBigInt, tutorScope } from "@/lib/utils";
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
+  payerName: z.string().min(1).max(120).nullable().optional(),
   contact: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   defaultPrice: z.number().int().positive().optional(),

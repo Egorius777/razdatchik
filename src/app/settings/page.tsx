@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Settings2 } from "lucide-react";
+import { CalendarDays, GraduationCap, Settings2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button, Card, Input, LoadingState, PageHeader, Select } from "@/components/ui";
@@ -94,7 +94,18 @@ function SettingsContent() {
             Шаблон повторяющихся уроков
           </Link>
         </Card>
-      ) : null}
+      ) : (
+        <Card className="mb-4 space-y-2">
+          <p className="text-sm font-medium">Управление</p>
+          <Link
+            href="/students"
+            className="flex min-h-11 items-center gap-2 rounded-xl bg-[var(--tg-muted-surface)] px-3 text-sm active:scale-[0.99]"
+          >
+            <GraduationCap className="h-4 w-4" />
+            Все ученики команды
+          </Link>
+        </Card>
+      )}
 
       <Button variant="secondary" className="w-full" onClick={logout}>
         Выйти

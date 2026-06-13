@@ -126,6 +126,7 @@ model Student {
   workspaceId      String
   tutorId          String
   name             String
+  payerName        String?
   contact          String?
   notes            String?
   defaultPrice     Decimal        @db.Decimal(12, 0)

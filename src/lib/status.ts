@@ -26,12 +26,26 @@ export const PAYMENT_STATUS_TONE: Record<string, "default" | "success" | "warnin
   Disputed: "danger",
 };
 
+export const PAYOUT_STATUS_LABELS: Record<string, string> = {
+  Pending: "ожидает выплаты",
+  Paid: "выплачено",
+};
+
+export const PAYOUT_STATUS_TONE: Record<string, "default" | "success" | "warning" | "danger"> = {
+  Pending: "warning",
+  Paid: "success",
+};
+
 export function getLessonStatusLabel(status: string): string {
   return LESSON_STATUS_LABELS[status] ?? status;
 }
 
 export function getPaymentStatusLabel(status: string): string {
   return PAYMENT_STATUS_LABELS[status] ?? status;
+}
+
+export function getPayoutStatusLabel(status: string): string {
+  return PAYOUT_STATUS_LABELS[status] ?? status;
 }
 
 export type DayAccent = "none" | "accent" | "success" | "warning";

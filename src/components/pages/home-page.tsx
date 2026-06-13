@@ -11,7 +11,15 @@ import {
   LoadingState,
   PageHeader,
 } from "@/components/ui";
-import { getLessonStatusLabel, LESSON_STATUS_TONE } from "@/lib/status";
+import { formatPayerLabel, formatPersonName, formatPeriodRange } from "@/lib/people";
+import {
+  getLessonStatusLabel,
+  getPaymentStatusLabel,
+  getPayoutStatusLabel,
+  LESSON_STATUS_TONE,
+  PAYMENT_STATUS_TONE,
+  PAYOUT_STATUS_TONE,
+} from "@/lib/status";
 import { formatDateKey } from "@/lib/schedule";
 import { formatLessonDateTime } from "@/lib/time";
 
@@ -39,15 +47,15 @@ export function HomePage() {
 
   if (loading || !role) return <LoadingState />;
 
+  const weekSubtitle = data?.weekStart
+    ? `Текущая неделя: ${formatPeriodRange(String(data.weekStart), String(data.weekEnd ?? data.weekStart))}`
+    : undefined;
+
   return (
-    <main className="mx-auto max-w-lg p-4">
+    <main className="mx-auto max-w-lg p-4 pb-28">
       <PageHeader
         title={role === "Distributor" ? "Дашборд" : "Главная"}
-        subtitle={
-          data?.weekStart
-            ? `Неделя ${new Date(String(data.weekStart)).toLocaleDateString("ru-RU")}`
-            : undefined
-        }
+        subtitle={weekSubtitle}
       />
 
       {role === "Tutor" ? <TutorHome data={data} /> : <DistributorHome data={data} />}
@@ -111,49 +119,142 @@ function TutorHome({ data }: { data: Record<string, unknown> | null }) {
   );
 }
 
+type DistributorPayment = {
+  id: string;
+  amount: string;
+  status: string;
+  student?: {
+    name: string;
+    payerName?: string | null;
+    tutor?: { firstName: string; lastName?: string | null; username?: string | null };
+  };
+};
+
+type DistributorPayout = {
+  id: string;
+  periodStart: string;
+  periodEnd: string;
+  netAmount: string;
+  lessonCount: number;
+  status: string;
+  tutorName?: string;
+  tutor?: { firstName: string; lastName?: string | null; username?: string | null };
+};
+
 function DistributorHome({ data }: { data: Record<string, unknown> | null }) {
   if (!data) return <EmptyState title="Нет данных" />;
   const kpis = (data.kpis ?? {}) as Record<string, number | string>;
+  const payouts = (Array.isArray(data.payouts) ? data.payouts : []) as DistributorPayout[];
+  const payments = (Array.isArray(data.payments) ? data.payments : []) as DistributorPayment[];
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        <KpiCard label="Комиссия" value={formatRub(String(kpis.commissionTotal ?? 0))} />
-        <KpiCard label="Уроков" value={String(kpis.lessonsDone ?? 0)} />
-        <KpiCard label="Ожидает" value={String(kpis.incomingReported ?? 0)} hint="оплат" />
-        <KpiCard label="К выплате" value={String(kpis.payoutPending ?? 0)} hint="репетиторов" />
+        <KpiCard
+          label="Комиссия"
+          value={formatRub(String(kpis.commissionTotal ?? 0))}
+          hint="за неделю"
+        />
+        <KpiCard
+          label="Проведено"
+          value={String(kpis.lessonsDone ?? 0)}
+          hint="уроков за неделю"
+        />
+        <KpiCard
+          label="Ожидает"
+          value={String(kpis.incomingReported ?? 0)}
+          hint="оплат на проверке"
+        />
+        <KpiCard
+          label="К выплате"
+          value={formatRub(String(kpis.payoutPendingSum ?? 0))}
+          hint={`${kpis.payoutPending ?? 0} репетиторов`}
+        />
       </div>
+
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--tg-hint)]">
-          Входящие за неделю
-        </h2>
-        <div className="space-y-2">
-          {(Array.isArray(data.payments) ? data.payments : []).slice(0, 8).map(
-            (p: {
-              id: string;
-              amount: string;
-              status: string;
-              student?: { name: string };
-            }) => (
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--tg-hint)]">
+            К выплате репетиторам
+          </h2>
+          <Link href="/payouts" className="text-xs text-[var(--tg-link)]">
+            Все →
+          </Link>
+        </div>
+        {data.payoutPeriodStart ? (
+          <p className="mb-2 text-xs text-[var(--tg-hint)]">
+            Расчётный период:{" "}
+            {formatPeriodRange(
+              String(data.payoutPeriodStart),
+              String(data.payoutPeriodEnd ?? data.payoutPeriodStart)
+            )}
+          </p>
+        ) : null}
+        {payouts.length === 0 ? (
+          <Card className="py-4 text-sm text-[var(--tg-hint)]">
+            Нет ожидающих выплат. Они появятся после недельного расчёта.
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {payouts.map((p) => (
+              <Link key={p.id} href="/payouts">
+                <Card className="flex items-center justify-between py-3 active:scale-[0.99]">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-[var(--tg-hint)]">
+                      Репетитор команды
+                    </p>
+                    <p className="text-lg font-semibold">
+                      {p.tutorName ?? formatPersonName(p.tutor)}
+                    </p>
+                    <p className="text-sm text-[var(--tg-hint)]">
+                      {formatPeriodRange(p.periodStart, p.periodEnd)} · {p.lessonCount}{" "}
+                      {p.lessonCount === 1 ? "урок" : p.lessonCount < 5 ? "урока" : "уроков"}
+                    </p>
+                    <Badge tone={PAYOUT_STATUS_TONE[p.status] ?? "warning"}>
+                      {getPayoutStatusLabel(p.status)}
+                    </Badge>
+                  </div>
+                  <span className="font-semibold">{formatRub(p.netAmount)}</span>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--tg-hint)]">
+            Входящие за неделю
+          </h2>
+          <Link href="/confirmations" className="text-xs text-[var(--tg-link)]">
+            Очередь →
+          </Link>
+        </div>
+        {payments.length === 0 ? (
+          <Card className="py-4 text-sm text-[var(--tg-hint)]">Оплат за эту неделю пока нет.</Card>
+        ) : (
+          <div className="space-y-2">
+            {payments.slice(0, 8).map((p) => (
               <Card key={p.id} className="flex items-center justify-between py-3">
                 <div>
-                  <p className="font-medium">{p.student?.name ?? "Ученик"}</p>
-                  <Badge
-                    tone={
-                      p.status === "Confirmed"
-                        ? "success"
-                        : p.status === "Disputed"
-                          ? "danger"
-                          : "warning"
-                    }
-                  >
-                    {p.status}
+                  <p className="text-xs font-medium uppercase tracking-wide text-[var(--tg-hint)]">
+                    Плательщик
+                  </p>
+                  <p className="font-medium">{formatPayerLabel(p.student)}</p>
+                  <p className="text-sm text-[var(--tg-hint)]">
+                    Ученик: {p.student?.name ?? "—"} · Репетитор:{" "}
+                    {formatPersonName(p.student?.tutor)}
+                  </p>
+                  <Badge tone={PAYMENT_STATUS_TONE[p.status] ?? "default"}>
+                    {getPaymentStatusLabel(p.status)}
                   </Badge>
                 </div>
                 <span className="font-semibold">{formatRub(p.amount)}</span>
               </Card>
-            )
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

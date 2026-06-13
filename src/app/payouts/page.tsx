@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { BottomNav } from "@/components/bottom-nav";
 import { Badge, Button, Card, EmptyState, LoadingState, PageHeader } from "@/components/ui";
+import { formatPersonName, formatPeriodRange } from "@/lib/people";
+import { getPayoutStatusLabel, PAYOUT_STATUS_TONE } from "@/lib/status";
 
 function PayoutsContent() {
   const [role, setRole] = useState<"Distributor" | "Tutor">("Distributor");
@@ -15,6 +17,8 @@ function PayoutsContent() {
       netAmount: string;
       lessonCount: number;
       status: string;
+      tutorName?: string;
+      tutor?: { firstName: string; lastName?: string | null; username?: string | null };
     }>
   >([]);
   const [loading, setLoading] = useState(true);
@@ -39,8 +43,11 @@ function PayoutsContent() {
   if (loading) return <LoadingState />;
 
   return (
-    <main className="mx-auto max-w-lg p-4">
-      <PageHeader title="Выплаты" subtitle="По неделям" />
+    <main className="mx-auto max-w-lg p-4 pb-28">
+      <PageHeader
+        title="Выплаты"
+        subtitle={role === "Distributor" ? "По репетиторам и неделям" : "Ваш заработок по неделям"}
+      />
       {role === "Distributor" ? (
         <a
           href="/api/payouts/export"
@@ -55,19 +62,33 @@ function PayoutsContent() {
         <div className="space-y-2">
           {payouts.map((p) => (
             <Card key={p.id} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">
-                    {new Date(p.periodStart).toLocaleDateString("ru-RU")} —{" "}
-                    {new Date(p.periodEnd).toLocaleDateString("ru-RU")}
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  {role === "Distributor" ? (
+                    <>
+                      <p className="text-xs font-medium uppercase tracking-wide text-[var(--tg-hint)]">
+                        Репетитор команды
+                      </p>
+                      <p className="text-lg font-semibold">
+                        {p.tutorName ?? formatPersonName(p.tutor)}
+                      </p>
+                    </>
+                  ) : null}
+                  <p className={role === "Distributor" ? "text-sm text-[var(--tg-hint)]" : "font-medium"}>
+                    {formatPeriodRange(p.periodStart, p.periodEnd)}
                   </p>
-                  <p className="text-sm text-[var(--tg-hint)]">{p.lessonCount} уроков</p>
+                  <p className="text-sm text-[var(--tg-hint)]">
+                    {p.lessonCount}{" "}
+                    {p.lessonCount === 1 ? "проведённый урок" : p.lessonCount < 5 ? "проведённых урока" : "проведённых уроков"}
+                  </p>
                 </div>
-                <div className="text-right">
+                <div className="shrink-0 text-right">
                   <p className="text-lg font-semibold">
                     {Number(p.netAmount).toLocaleString("ru-RU")} ₽
                   </p>
-                  <Badge tone={p.status === "Paid" ? "success" : "warning"}>{p.status}</Badge>
+                  <Badge tone={PAYOUT_STATUS_TONE[p.status] ?? "warning"}>
+                    {getPayoutStatusLabel(p.status)}
+                  </Badge>
                 </div>
               </div>
               {role === "Distributor" && p.status === "Pending" ? (

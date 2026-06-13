@@ -5,6 +5,7 @@ import { generateInviteCode, serializeBigInt, tutorScope } from "@/lib/utils";
 
 const studentSchema = z.object({
   name: z.string().min(1),
+  payerName: z.string().min(1).max(120).optional(),
   contact: z.string().optional(),
   notes: z.string().optional(),
   defaultPrice: z.number().int().positive(),
@@ -37,10 +38,28 @@ export async function POST(request: Request) {
     const body = studentSchema.parse(await request.json());
 
     const tutorId =
-      auth.role === "Distributor" && body.tutorId ? body.tutorId : auth.userId;
+      auth.role === "Distributor" ? body.tutorId : auth.userId;
+
+    if (!tutorId) {
+      return Response.json({ error: "tutorId required" }, { status: 400 });
+    }
 
     if (auth.role === "Tutor" && tutorId !== auth.userId) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (auth.role === "Distributor" && tutorId !== auth.userId) {
+      const membership = await prisma.membership.findFirst({
+        where: {
+          workspaceId: auth.workspaceId,
+          userId: tutorId,
+          role: "Tutor",
+          status: "Active",
+        },
+      });
+      if (!membership) {
+        return Response.json({ error: "Tutor not found" }, { status: 404 });
+      }
     }
 
     const student = await prisma.student.create({
@@ -48,6 +67,7 @@ export async function POST(request: Request) {
         workspaceId: auth.workspaceId,
         tutorId,
         name: body.name,
+        payerName: body.payerName,
         contact: body.contact,
         notes: body.notes,
         defaultPrice: body.defaultPrice,

@@ -24,7 +24,7 @@ type Slot = {
   student: { id: string; name: string };
 };
 
-type StudentOption = { id: string; name: string };
+type StudentOption = { id: string; name: string; payerName?: string | null };
 
 const WEEKDAYS = [
   { value: 1, label: "Понедельник" },
@@ -47,6 +47,7 @@ function SetupContent() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     studentId: "",
+    payerName: "",
     weekday: "1",
     startTime: "10:00",
     durationMin: "60",
@@ -83,15 +84,26 @@ function SetupContent() {
   }, [slots]);
 
   function resetForm() {
-    setForm({ studentId: "", weekday: "1", startTime: "10:00", durationMin: "60" });
+    setForm({ studentId: "", payerName: "", weekday: "1", startTime: "10:00", durationMin: "60" });
     setEditingId(null);
     setShowForm(false);
   }
 
+  function onStudentChange(studentId: string) {
+    const student = students.find((s) => s.id === studentId);
+    setForm({
+      ...form,
+      studentId,
+      payerName: student?.payerName ?? "",
+    });
+  }
+
   function startEdit(slot: Slot) {
     setEditingId(slot.id);
+    const student = students.find((s) => s.id === slot.student.id);
     setForm({
       studentId: slot.student.id,
+      payerName: student?.payerName ?? "",
       weekday: String(slot.weekday),
       startTime: slot.startTime,
       durationMin: String(slot.durationMin),
@@ -102,6 +114,15 @@ function SetupContent() {
   async function saveSlot() {
     if (!form.studentId) return;
     setBusy(true);
+
+    if (form.studentId) {
+      await fetch(`/api/students/${form.studentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payerName: form.payerName.trim() || null }),
+      });
+    }
+
     const payload = {
       studentId: form.studentId,
       weekday: Number(form.weekday),
@@ -188,7 +209,7 @@ function SetupContent() {
           <Select
             label="Ученик"
             value={form.studentId}
-            onChange={(e) => setForm({ ...form, studentId: e.target.value })}
+            onChange={(e) => onStudentChange(e.target.value)}
           >
             <option value="">Выберите ученика</option>
             {students.map((s) => (
@@ -197,6 +218,19 @@ function SetupContent() {
               </option>
             ))}
           </Select>
+          {form.studentId ? (
+            <>
+              <Input
+                label="Кто платит (имя в переводе)"
+                value={form.payerName}
+                onChange={(e) => setForm({ ...form, payerName: e.target.value })}
+                placeholder="Как в банковском переводе"
+              />
+              <p className="text-xs text-[var(--tg-hint)]">
+                Раздатчик сверяет входящие переводы по этому имени
+              </p>
+            </>
+          ) : null}
           <Select
             label="День недели"
             value={form.weekday}

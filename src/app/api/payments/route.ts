@@ -16,7 +16,14 @@ export async function GET(request: Request) {
         ...(status ? { status: status as "Reported" | "Confirmed" | "Disputed" } : {}),
       },
       include: {
-        student: { select: { id: true, name: true } },
+        student: {
+          select: {
+            id: true,
+            name: true,
+            payerName: true,
+            tutor: { select: { id: true, firstName: true, lastName: true, username: true } },
+          },
+        },
         receipt: { select: { id: true, mime: true, size: true } },
         lessons: { include: { lesson: true } },
       },

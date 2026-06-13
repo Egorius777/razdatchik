@@ -15,24 +15,43 @@ function StudentDetailContent() {
   const [role, setRole] = useState<"Distributor" | "Tutor">("Tutor");
   const [student, setStudent] = useState<{
     name: string;
+    payerName?: string | null;
     defaultPrice: string;
     lessons: Array<{ id: string; scheduledAt: string; status: string; tutorAmount: string }>;
   } | null>(null);
+  const [payerName, setPayerName] = useState("");
+  const [payerBusy, setPayerBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [payBusy, setPayBusy] = useState(false);
 
+  async function reloadStudent() {
+    const res = await fetch(`/api/students/${id}`).then((r) => r.json());
+    setStudent(res.student);
+    setPayerName(res.student?.payerName ?? "");
+  }
+
   useEffect(() => {
     async function load() {
       const me = await fetch("/api/auth/telegram").then((r) => r.json());
       setRole(me.role ?? "Tutor");
-      const res = await fetch(`/api/students/${id}`).then((r) => r.json());
-      setStudent(res.student);
+      await reloadStudent();
       setLoading(false);
     }
     load();
   }, [id]);
+
+  async function savePayerName() {
+    setPayerBusy(true);
+    await fetch(`/api/students/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payerName: payerName.trim() || null }),
+    });
+    setPayerBusy(false);
+    await reloadStudent();
+  }
 
   async function reportPayment(lessonId?: string) {
     setPayBusy(true);
@@ -44,8 +63,7 @@ function StudentDetailContent() {
     await fetch("/api/payments", { method: "POST", body: form });
     setPayBusy(false);
     setReceiptFile(null);
-    const res = await fetch(`/api/students/${id}`).then((r) => r.json());
-    setStudent(res.student);
+    await reloadStudent();
   }
 
   async function addLesson() {
@@ -58,8 +76,7 @@ function StudentDetailContent() {
         status: "Done",
       }),
     });
-    const res = await fetch(`/api/students/${id}`).then((r) => r.json());
-    setStudent(res.student);
+    await reloadStudent();
   }
 
   if (loading) return <LoadingState />;
@@ -72,6 +89,29 @@ function StudentDetailContent() {
         title={student.name}
         subtitle={`${Number(student.defaultPrice).toLocaleString("ru-RU")} ₽ / урок`}
       />
+
+      {role === "Tutor" ? (
+        <Card className="mb-4 space-y-3">
+          <p className="text-sm font-medium">Кто платит</p>
+          <Input
+            label="Имя в переводе"
+            value={payerName}
+            onChange={(e) => setPayerName(e.target.value)}
+            placeholder="Как в банковском переводе"
+          />
+          <p className="text-xs text-[var(--tg-hint)]">
+            Раздатчик увидит это имя при проверке оплат, а не имя ученика
+          </p>
+          <Button className="w-full" disabled={payerBusy} onClick={savePayerName}>
+            Сохранить плательщика
+          </Button>
+        </Card>
+      ) : student.payerName ? (
+        <Card className="mb-4 py-3">
+          <p className="text-xs text-[var(--tg-hint)]">Плательщик</p>
+          <p className="font-medium">{student.payerName}</p>
+        </Card>
+      ) : null}
 
       <Link href="/schedule" className="mb-4 block">
         <Card className="py-3 text-sm text-[var(--tg-link)] active:scale-[0.99]">

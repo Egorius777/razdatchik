@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import { jsonError, requireDistributor } from "@/lib/auth";
+import { loadUsersByIds } from "@/lib/members";
+import { formatPersonName } from "@/lib/people";
 
 export async function GET(request: Request) {
   try {
@@ -12,15 +14,18 @@ export async function GET(request: Request) {
         workspaceId: auth.workspaceId,
         ...(periodStart ? { periodStart: new Date(periodStart) } : {}),
       },
-      orderBy: { periodStart: "desc" },
+      orderBy: [{ periodStart: "desc" }, { tutorId: "asc" }],
     });
 
-    const header = "periodStart,periodEnd,tutorId,gross,commissionTotal,netAmount,lessonCount,status\n";
+    const users = await loadUsersByIds(payouts.map((p) => p.tutorId));
+
+    const header =
+      "periodStart,periodEnd,tutorName,tutorId,gross,commissionTotal,netAmount,lessonCount,status\n";
     const rows = payouts
-      .map(
-        (p) =>
-          `${p.periodStart.toISOString().slice(0, 10)},${p.periodEnd.toISOString().slice(0, 10)},${p.tutorId},${p.gross},${p.commissionTotal},${p.netAmount},${p.lessonCount},${p.status}`
-      )
+      .map((p) => {
+        const tutorName = formatPersonName(users.get(p.tutorId)).replace(/,/g, " ");
+        return `${p.periodStart.toISOString().slice(0, 10)},${p.periodEnd.toISOString().slice(0, 10)},${tutorName},${p.tutorId},${p.gross},${p.commissionTotal},${p.netAmount},${p.lessonCount},${p.status}`;
+      })
       .join("\n");
 
     return new Response(header + rows, {

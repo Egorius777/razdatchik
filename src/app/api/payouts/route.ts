@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { jsonError, requireAuth } from "@/lib/auth";
+import { attachTutorToPayouts } from "@/lib/members";
 import { serializeBigInt } from "@/lib/utils";
 
 export async function GET() {
@@ -10,9 +11,10 @@ export async function GET() {
         workspaceId: auth.workspaceId,
         ...(auth.role === "Tutor" ? { tutorId: auth.userId } : {}),
       },
-      orderBy: { periodStart: "desc" },
+      orderBy: [{ periodStart: "desc" }, { tutorId: "asc" }],
     });
-    return Response.json(serializeBigInt({ payouts }));
+    const enriched = await attachTutorToPayouts(payouts);
+    return Response.json(serializeBigInt({ payouts: enriched }));
   } catch (error) {
     return jsonError(error);
   }
