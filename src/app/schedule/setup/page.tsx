@@ -1,9 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { BackHeader } from "@/components/back-header";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   Badge,
@@ -172,16 +171,7 @@ function SetupContent() {
 
   return (
     <main className="mx-auto max-w-lg p-4 pb-28">
-      <div className="mb-4 flex items-center gap-2">
-        <Link
-          href="/schedule"
-          className="flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-[var(--tg-muted-surface)]"
-          aria-label="Назад"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <PageHeader title="Шаблон" subtitle="Повторяющиеся слоты по дням недели" />
-      </div>
+      <BackHeader href="/schedule" title="Шаблон" subtitle="Повторяющиеся слоты по дням недели" />
 
       <Button className="mb-4 w-full" onClick={() => (showForm ? resetForm() : setShowForm(true))}>
         {showForm ? "Отмена" : "+ Добавить слот"}

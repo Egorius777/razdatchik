@@ -110,7 +110,7 @@ function ScheduleContent() {
   const [listLoading, setListLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeLesson, setActiveLesson] = useState<LessonItem | null>(null);
-  const [confirmAction, setConfirmAction] = useState<"Cancelled" | "NoShow" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"Cancelled" | "NoShow" | "delete" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [showOneOff, setShowOneOff] = useState(false);
@@ -226,6 +226,28 @@ function ScheduleContent() {
     }
   }
 
+  async function deleteLesson(lessonId: string) {
+    setBusy(true);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/lessons/${lessonId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(
+          typeof err.error === "string" ? err.error : "Не удалось удалить урок"
+        );
+      }
+      hapticSuccess();
+      closeSheet();
+      if (weekStart) await loadWeek(weekStart, selectedDate);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setBusy(false);
+      setConfirmAction(null);
+    }
+  }
+
   async function reportPayment(lesson: LessonItem) {
     setBusy(true);
     setActionError(null);
@@ -276,8 +298,9 @@ function ScheduleContent() {
         <PageHeader title="Расписание" subtitle="Уроки на неделю" />
         <Link
           href="/schedule/setup"
-          className="mt-1 flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-[var(--tg-muted-surface)] text-[var(--tg-hint)]"
-          aria-label="Настроить шаблон"
+          className="mt-1 flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--tg-muted-surface)] text-[var(--tg-hint)]"
+          aria-label="Шаблон расписания"
+          title="Шаблон расписания"
         >
           <Settings2 className="h-5 w-5" />
         </Link>
@@ -450,7 +473,10 @@ function ScheduleContent() {
       ) : null}
 
       {!listLoading && selectedDay && selectedDay.lessons.length === 0 ? (
-        <EmptyState title="Нет уроков" description="Добавьте разовый урок или настройте шаблон" />
+        <EmptyState
+          title="Нет уроков"
+          description="Настройте шаблон (⚙️ справа вверху) или добавьте разовый урок"
+        />
       ) : null}
 
       {!listLoading && selectedDay ? (
@@ -517,15 +543,21 @@ function ScheduleContent() {
                 <p className="text-sm text-[var(--tg-hint)]">
                   {confirmAction === "Cancelled"
                     ? "Отменить урок?"
-                    : "Отметить, что ученик не пришёл?"}
+                    : confirmAction === "NoShow"
+                      ? "Отметить, что ученик не пришёл?"
+                      : "Удалить урок из расписания? Для ошибочных или лишних записей."}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="danger"
                     disabled={busy}
-                    onClick={() => updateLessonStatus(activeLesson.id, confirmAction)}
+                    onClick={() =>
+                      confirmAction === "delete"
+                        ? deleteLesson(activeLesson.id)
+                        : updateLessonStatus(activeLesson.id, confirmAction)
+                    }
                   >
-                    Подтвердить
+                    {confirmAction === "delete" ? "Удалить" : "Подтвердить"}
                   </Button>
                   <Button variant="secondary" disabled={busy} onClick={() => setConfirmAction(null)}>
                     Назад
@@ -571,6 +603,16 @@ function ScheduleContent() {
                     Закрыть
                   </Button>
                 </div>
+                {activeLesson.status !== "Done" ? (
+                  <Button
+                    variant="ghost"
+                    disabled={busy}
+                    className="w-full text-[var(--badge-danger-text)]"
+                    onClick={() => setConfirmAction("delete")}
+                  >
+                    Удалить из расписания
+                  </Button>
+                ) : null}
               </div>
             )}
 

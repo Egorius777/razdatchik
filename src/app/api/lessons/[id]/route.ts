@@ -61,3 +61,40 @@ export async function PATCH(
     return jsonError(error);
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = await requireAuth();
+    const { id } = await params;
+
+    const lesson = await prisma.lesson.findFirst({
+      where: { id, workspaceId: auth.workspaceId, ...tutorScope(auth) },
+      include: { payments: true },
+    });
+    if (!lesson) {
+      return Response.json({ error: "Not found" }, { status: 404 });
+    }
+
+    if (lesson.status === "Done") {
+      return Response.json(
+        { error: "Проведённый урок нельзя удалить — он учтён в выплатах" },
+        { status: 400 }
+      );
+    }
+
+    if (lesson.payments.length > 0) {
+      return Response.json(
+        { error: "Урок с привязанной оплатой нельзя удалить" },
+        { status: 400 }
+      );
+    }
+
+    await prisma.lesson.delete({ where: { id } });
+    return Response.json({ ok: true });
+  } catch (error) {
+    return jsonError(error);
+  }
+}

@@ -1,6 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
+import { CalendarDays, Settings2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button, Card, Input, LoadingState, PageHeader, Select } from "@/components/ui";
@@ -42,7 +44,7 @@ function SettingsContent() {
   if (loading) return <LoadingState />;
 
   return (
-    <main className="mx-auto max-w-lg p-4">
+    <main className="mx-auto max-w-lg p-4 pb-28">
       <PageHeader title="Настройки" />
       <Card className="mb-4 space-y-3">
         <p className="text-sm text-[var(--tg-hint)]">Workspace</p>
@@ -73,6 +75,27 @@ function SettingsContent() {
           </>
         ) : null}
       </Card>
+
+      {role === "Tutor" ? (
+        <Card className="mb-4 space-y-2">
+          <p className="text-sm font-medium">Расписание</p>
+          <Link
+            href="/schedule"
+            className="flex min-h-11 items-center gap-2 rounded-xl bg-[var(--tg-muted-surface)] px-3 text-sm active:scale-[0.99]"
+          >
+            <CalendarDays className="h-4 w-4" />
+            Открыть расписание
+          </Link>
+          <Link
+            href="/schedule/setup"
+            className="flex min-h-11 items-center gap-2 rounded-xl bg-[var(--tg-muted-surface)] px-3 text-sm active:scale-[0.99]"
+          >
+            <Settings2 className="h-4 w-4" />
+            Шаблон повторяющихся уроков
+          </Link>
+        </Card>
+      ) : null}
+
       <Button variant="secondary" className="w-full" onClick={logout}>
         Выйти
       </Button>
