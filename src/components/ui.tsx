@@ -12,7 +12,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-black/5 bg-[var(--tg-secondary-bg)] p-4 shadow-sm",
+        "rounded-2xl border border-[var(--tg-border-subtle)] bg-[var(--tg-secondary-bg)] p-4 shadow-sm",
         className
       )}
     >
@@ -47,10 +47,10 @@ export function Badge({
   tone?: "default" | "success" | "warning" | "danger";
 }) {
   const tones = {
-    default: "bg-slate-100 text-slate-700",
-    success: "bg-emerald-100 text-emerald-800",
-    warning: "bg-amber-100 text-amber-800",
-    danger: "bg-rose-100 text-rose-800",
+    default: "bg-[var(--badge-default-bg)] text-[var(--badge-default-text)]",
+    success: "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
+    warning: "bg-[var(--badge-warning-bg)] text-[var(--badge-warning-text)]",
+    danger: "bg-[var(--badge-danger-bg)] text-[var(--badge-danger-text)]",
   };
   return (
     <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium", tones[tone])}>
@@ -76,7 +76,7 @@ export function Button({
 }) {
   const variants = {
     primary: "bg-[var(--tg-button)] text-[var(--tg-button-text)]",
-    secondary: "bg-black/5 text-[var(--tg-text)]",
+    secondary: "bg-[var(--tg-muted-surface)] text-[var(--tg-text)]",
     ghost: "bg-transparent text-[var(--tg-link)]",
     danger: "bg-rose-600 text-white",
   };
@@ -106,7 +106,7 @@ export function Input({
       <input
         {...props}
         className={cn(
-          "min-h-11 rounded-xl border border-black/10 bg-[var(--tg-secondary-bg)] px-3 outline-none focus:border-[var(--tg-link)]",
+          "min-h-11 rounded-xl border border-[var(--tg-border)] bg-[var(--tg-secondary-bg)] px-3 outline-none focus:border-[var(--tg-link)]",
           props.className
         )}
       />
@@ -125,7 +125,7 @@ export function Select({
       <select
         {...props}
         className={cn(
-          "min-h-11 rounded-xl border border-black/10 bg-[var(--tg-secondary-bg)] px-3 outline-none",
+          "min-h-11 rounded-xl border border-[var(--tg-border)] bg-[var(--tg-secondary-bg)] px-3 outline-none",
           props.className
         )}
       >
@@ -158,5 +158,22 @@ export function PageHeader({ title, subtitle }: { title: string; subtitle?: stri
       <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
       {subtitle ? <p className="mt-1 text-sm text-[var(--tg-hint)]">{subtitle}</p> : null}
     </header>
+  );
+}
+
+export function LessonListSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="animate-pulse rounded-2xl border border-[var(--tg-border-subtle)] bg-[var(--tg-secondary-bg)] p-4"
+        >
+          <div className="mb-2 h-4 w-32 rounded bg-[var(--tg-muted-surface)]" />
+          <div className="mb-2 h-3 w-24 rounded bg-[var(--tg-muted-surface)]" />
+          <div className="h-5 w-16 rounded-full bg-[var(--tg-muted-surface)]" />
+        </div>
+      ))}
+    </div>
   );
 }

@@ -9,6 +9,19 @@
   --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
   --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #ffffff);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tg-muted-surface: color-mix(in srgb, var(--tg-text) 8%, transparent);
+  --tg-border: color-mix(in srgb, var(--tg-text) 10%, transparent);
+  --tg-border-subtle: color-mix(in srgb, var(--tg-text) 5%, transparent);
+  --badge-default-bg: color-mix(in srgb, var(--tg-hint) 18%, var(--tg-secondary-bg));
+  --badge-default-text: var(--tg-text);
+  --badge-success-bg: color-mix(in srgb, #059669 22%, var(--tg-secondary-bg));
+  --badge-success-text: color-mix(in srgb, #059669 85%, var(--tg-text));
+  --badge-warning-bg: color-mix(in srgb, #d97706 22%, var(--tg-secondary-bg));
+  --badge-warning-text: color-mix(in srgb, #d97706 85%, var(--tg-text));
+  --badge-danger-bg: color-mix(in srgb, #e11d48 22%, var(--tg-secondary-bg));
+  --badge-danger-text: color-mix(in srgb, #e11d48 85%, var(--tg-text));
+  --accent-success: #059669;
+  --accent-warning: #d97706;
 }
 
 * {

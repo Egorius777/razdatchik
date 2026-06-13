@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { BottomNav } from "@/components/bottom-nav";
 import { Badge, Card, EmptyState, LoadingState, PageHeader } from "@/components/ui";
+import { getLessonStatusLabel, LESSON_STATUS_TONE } from "@/lib/status";
 
 function HistoryContent() {
   const [role, setRole] = useState<"Distributor" | "Tutor">("Tutor");
@@ -49,7 +50,9 @@ function HistoryContent() {
                 <p className="text-sm text-[var(--tg-hint)]">
                   {new Date(l.scheduledAt).toLocaleDateString("ru-RU")}
                 </p>
-                <Badge tone={l.status === "Done" ? "success" : "default"}>{l.status}</Badge>
+                <Badge tone={LESSON_STATUS_TONE[l.status] ?? "default"}>
+                  {getLessonStatusLabel(l.status)}
+                </Badge>
               </div>
               <span className="font-semibold">{Number(l.tutorAmount).toLocaleString("ru-RU")} ₽</span>
             </Card>

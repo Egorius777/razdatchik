@@ -21,6 +21,10 @@ export async function GET() {
         ...tutorScope(auth),
         scheduledAt: { gte: start, lte: end },
       },
+      include: {
+        student: { select: { name: true } },
+      },
+      orderBy: { scheduledAt: "asc" },
     });
 
     const doneLessons = lessons.filter((l) => l.status === "Done");
@@ -42,7 +46,13 @@ export async function GET() {
         lessonsDone: doneLessons.length,
         weekEarnings: weekEarnings.toFixed(0),
         pendingConfirmations: pendingPayments,
-        recentLessons: lessons.slice(0, 10),
+        recentLessons: lessons.slice(0, 10).map((lesson) => ({
+          id: lesson.id,
+          scheduledAt: lesson.scheduledAt,
+          status: lesson.status,
+          tutorAmount: lesson.tutorAmount,
+          studentName: lesson.student.name,
+        })),
       })
     );
   } catch (error) {

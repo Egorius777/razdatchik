@@ -37,7 +37,7 @@ export function BottomNav({ role }: { role: Role }) {
   const tabs = role === "Distributor" ? distributorTabs : tutorTabs;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-black/5 bg-[var(--tg-secondary-bg)] pb-[var(--safe-bottom)]">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--tg-border-subtle)] bg-[var(--tg-secondary-bg)] pb-[var(--safe-bottom)]">
       <div className="mx-auto flex max-w-lg items-stretch justify-around">
         {tabs.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || (href !== "/" && pathname.startsWith(href));

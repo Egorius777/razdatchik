@@ -53,6 +53,7 @@ function SetupContent() {
     durationMin: "60",
   });
   const [busy, setBusy] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
   async function load() {
     const [me, slotsRes, studentsRes] = await Promise.all([
@@ -125,6 +126,10 @@ function SetupContent() {
 
     setBusy(false);
     resetForm();
+    setSaveNotice(
+      "Изменения применятся к будущим неделям; уроки текущей недели не меняются"
+    );
+    setTimeout(() => setSaveNotice(null), 5000);
     await load();
   }
 
@@ -140,6 +145,13 @@ function SetupContent() {
   }
 
   async function deleteSlot(id: string) {
+    if (
+      !window.confirm(
+        "Удалить слот из шаблона? Уже созданные уроки останутся в расписании."
+      )
+    ) {
+      return;
+    }
     setBusy(true);
     await fetch(`/api/schedule/slots/${id}`, { method: "DELETE" });
     setBusy(false);
@@ -163,7 +175,7 @@ function SetupContent() {
       <div className="mb-4 flex items-center gap-2">
         <Link
           href="/schedule"
-          className="flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-black/5"
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-[var(--tg-muted-surface)]"
           aria-label="Назад"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -174,6 +186,12 @@ function SetupContent() {
       <Button className="mb-4 w-full" onClick={() => (showForm ? resetForm() : setShowForm(true))}>
         {showForm ? "Отмена" : "+ Добавить слот"}
       </Button>
+
+      {saveNotice ? (
+        <Card className="mb-4 text-sm text-[var(--badge-success-text)] bg-[var(--badge-success-bg)]">
+          {saveNotice}
+        </Card>
+      ) : null}
 
       {showForm ? (
         <Card className="mb-4 space-y-3">
@@ -243,7 +261,7 @@ function SetupContent() {
                             {slot.startTime} · {slot.durationMin} мин
                           </p>
                           <Badge tone={slot.isActive ? "success" : "warning"}>
-                            {slot.isActive ? "Активен" : "Выключен"}
+                            {slot.isActive ? "Активен" : "Приостановлен"}
                           </Badge>
                         </div>
                       </div>
@@ -252,12 +270,17 @@ function SetupContent() {
                           Изменить
                         </Button>
                         <Button variant="secondary" disabled={busy} onClick={() => toggleActive(slot)}>
-                          {slot.isActive ? "Выкл" : "Вкл"}
+                          {slot.isActive ? "Приостановить" : "Включить"}
                         </Button>
                         <Button variant="danger" disabled={busy} onClick={() => deleteSlot(slot.id)}>
                           Удалить
                         </Button>
                       </div>
+                      {!slot.isActive ? (
+                        <p className="text-xs text-[var(--tg-hint)]">
+                          Новые уроки не создаются, старые остаются
+                        </p>
+                      ) : null}
                     </Card>
                   ))}
                 </div>

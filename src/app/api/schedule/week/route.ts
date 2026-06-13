@@ -67,9 +67,28 @@ export async function GET(request: Request) {
       include: {
         student: { select: { name: true } },
         scheduleSlot: { select: { durationMin: true } },
+        payments: {
+          include: {
+            payment: { select: { status: true, reportedAt: true } },
+          },
+        },
       },
       orderBy: { scheduledAt: "asc" },
     });
+
+    function resolvePaymentStatus(
+      links: Array<{ payment: { status: string; reportedAt: Date } }>
+    ): "none" | "Reported" | "Confirmed" | "Disputed" {
+      if (links.length === 0) return "none";
+      const sorted = [...links].sort(
+        (a, b) => b.payment.reportedAt.getTime() - a.payment.reportedAt.getTime()
+      );
+      const status = sorted[0].payment.status;
+      if (status === "Confirmed" || status === "Reported" || status === "Disputed") {
+        return status;
+      }
+      return "none";
+    }
 
     const days = Array.from({ length: 7 }, (_, index) => {
       const date = addDays(weekStart, index);
@@ -84,6 +103,7 @@ export async function GET(request: Request) {
           status: lesson.status,
           price: lesson.price.toString(),
           durationMin: lesson.scheduleSlot?.durationMin ?? 60,
+          paymentStatus: resolvePaymentStatus(lesson.payments),
         }));
 
       return {

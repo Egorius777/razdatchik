@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BottomNav } from "@/components/bottom-nav";
 import {
@@ -10,6 +11,7 @@ import {
   LoadingState,
   PageHeader,
 } from "@/components/ui";
+import { getLessonStatusLabel, LESSON_STATUS_TONE } from "@/lib/status";
 
 function formatRub(n: string | number) {
   return `${Number(n).toLocaleString("ru-RU")} ₽`;
@@ -61,33 +63,51 @@ function TutorHome({ data }: { data: Record<string, unknown> | null }) {
         <KpiCard label="Уроков" value={String(data.lessonsDone ?? 0)} hint={`из ${data.lessonsTotal ?? 0}`} />
       </div>
       {(Number(data.pendingConfirmations) || 0) > 0 ? (
-        <Card className="border-amber-200 bg-amber-50">
+        <Card className="border-[var(--badge-warning-bg)] bg-[var(--badge-warning-bg)]">
           <p className="text-sm">
             Ожидает подтверждения: <strong>{String(data.pendingConfirmations)}</strong> оплат
           </p>
         </Card>
       ) : null}
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--tg-hint)]">
-          Уроки недели
-        </h2>
+        <Link href="/schedule" className="mb-2 block">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--tg-hint)]">
+            Уроки недели →
+          </h2>
+        </Link>
         <div className="space-y-2">
           {(Array.isArray(data.recentLessons) ? data.recentLessons : []).map(
-            (lesson: { id: string; scheduledAt: string; status: string; tutorAmount: string }) => (
-              <Card key={lesson.id} className="flex items-center justify-between py-3">
-                <div>
-                  <p className="font-medium">
-                    {new Date(lesson.scheduledAt).toLocaleDateString("ru-RU", {
-                      weekday: "short",
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </p>
-                  <Badge tone={lesson.status === "Done" ? "success" : "default"}>{lesson.status}</Badge>
-                </div>
-                <span className="font-semibold">{formatRub(lesson.tutorAmount)}</span>
-              </Card>
-            )
+            (lesson: {
+              id: string;
+              scheduledAt: string;
+              status: string;
+              tutorAmount: string;
+              studentName?: string;
+            }) => {
+              const dateKey = new Date(lesson.scheduledAt).toISOString().slice(0, 10);
+              return (
+                <Link key={lesson.id} href={`/schedule?date=${dateKey}`}>
+                  <Card className="flex items-center justify-between py-3 active:scale-[0.99]">
+                    <div>
+                      <p className="font-medium">{lesson.studentName ?? "Урок"}</p>
+                      <p className="text-sm text-[var(--tg-hint)]">
+                        {new Date(lesson.scheduledAt).toLocaleDateString("ru-RU", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                      <Badge tone={LESSON_STATUS_TONE[lesson.status] ?? "default"}>
+                        {getLessonStatusLabel(lesson.status)}
+                      </Badge>
+                    </div>
+                    <span className="font-semibold">{formatRub(lesson.tutorAmount)}</span>
+                  </Card>
+                </Link>
+              );
+            }
           )}
         </div>
       </section>
