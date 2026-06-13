@@ -6,6 +6,7 @@ import {
   ensureWeekLessons,
   formatDateKey,
   getWeekEnd,
+  normalizeWeekStart,
   parseWeekStart,
   WEEKDAY_LABELS,
 } from "@/lib/schedule";
@@ -35,9 +36,11 @@ export async function GET(request: Request) {
       select: { settlementWeekday: true },
     });
 
-    const weekStart = weekStartParam
+    const rawWeekStart = weekStartParam
       ? parseWeekStart(weekStartParam)
       : getWeekBounds(new Date(), workspace.settlementWeekday).start;
+
+    const weekStart = normalizeWeekStart(rawWeekStart, workspace.settlementWeekday);
 
     let tutorId: string;
     try {

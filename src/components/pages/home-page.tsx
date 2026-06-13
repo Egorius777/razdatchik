@@ -12,6 +12,7 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { getLessonStatusLabel, LESSON_STATUS_TONE } from "@/lib/status";
+import { formatDateKey } from "@/lib/schedule";
 
 function formatRub(n: string | number) {
   return `${Number(n).toLocaleString("ru-RU")} ₽`;
@@ -84,7 +85,7 @@ function TutorHome({ data }: { data: Record<string, unknown> | null }) {
               tutorAmount: string;
               studentName?: string;
             }) => {
-              const dateKey = new Date(lesson.scheduledAt).toISOString().slice(0, 10);
+              const dateKey = formatDateKey(new Date(lesson.scheduledAt));
               return (
                 <Link key={lesson.id} href={`/schedule?date=${dateKey}`}>
                   <Card className="flex items-center justify-between py-3 active:scale-[0.99]">

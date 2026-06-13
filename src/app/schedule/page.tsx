@@ -19,6 +19,11 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import {
+  formatDateKey,
+  shiftWeekDateKey,
+  todayDateKey,
+} from "@/lib/schedule";
+import {
   getDayAccent,
   getLessonStatusLabel,
   getPaymentStatusLabel,
@@ -75,24 +80,22 @@ function formatWeekLabel(weekStart: string): string {
 
 function formatHeroWhen(iso: string): string {
   const time = formatTime(iso);
-  const lessonDate = iso.slice(0, 10);
-  const today = new Date().toISOString().slice(0, 10);
+  const lessonDate = formatDateKey(new Date(iso));
+  const today = todayDateKey();
   if (lessonDate === today) return `Сегодня ${time}`;
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  if (lessonDate === tomorrow.toISOString().slice(0, 10)) return `Завтра ${time}`;
+  if (lessonDate === formatDateKey(tomorrow)) return `Завтра ${time}`;
   const d = new Date(iso);
   return `${d.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })} ${time}`;
 }
 
 function shiftWeek(weekStart: string, deltaWeeks: number): string {
-  const date = new Date(`${weekStart}T00:00:00`);
-  date.setDate(date.getDate() + deltaWeeks * 7);
-  return date.toISOString().slice(0, 10);
+  return shiftWeekDateKey(weekStart, deltaWeeks);
 }
 
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }
 
 function ScheduleContent() {
@@ -485,11 +488,14 @@ function ScheduleContent() {
 
       {activeLesson ? (
         <div
-          className="fixed inset-0 z-50 flex items-end bg-black/40 p-4 pb-[calc(var(--safe-bottom)+1rem)]"
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40"
           onClick={() => !busy && closeSheet()}
           role="presentation"
         >
-          <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="w-full max-w-lg max-h-[calc(100dvh-0.5rem)] overflow-y-auto overscroll-y-contain px-4 pb-[calc(var(--safe-bottom)+1rem)] pt-2"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Card className="space-y-3">
             <div>
               <p className="font-semibold">{activeLesson.studentName}</p>
@@ -592,7 +598,7 @@ function ScheduleContent() {
                 Отправить оплату
               </Button>
             </div>
-          </Card>
+            </Card>
           </div>
         </div>
       ) : null}

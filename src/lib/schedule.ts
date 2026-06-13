@@ -19,6 +19,20 @@ export function formatDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+export function todayDateKey(): string {
+  return formatDateKey(new Date());
+}
+
+/** Always returns the settlement-week start (e.g. Monday) containing `date`. */
+export function normalizeWeekStart(date: Date, settlementWeekday = 1): Date {
+  return getWeekBounds(date, settlementWeekday).start;
+}
+
+export function shiftWeekDateKey(weekStartKey: string, deltaWeeks: number): string {
+  const date = parseWeekStart(weekStartKey);
+  return formatDateKey(addDays(date, deltaWeeks * 7));
+}
+
 export function addDays(date: Date, days: number): Date {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
@@ -36,10 +50,22 @@ export function slotLessonKey(scheduleSlotId: string, date: Date): string {
   return `${scheduleSlotId}:${formatDateKey(date)}`;
 }
 
+export function getDayBounds(date: Date): { start: Date; end: Date } {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
 export function getWeekEnd(weekStart: Date): Date {
   const end = addDays(weekStart, 6);
   end.setHours(23, 59, 59, 999);
   return end;
+}
+
+export function lessonDateForSlot(weekStart: Date, weekday: number): Date {
+  return addDays(weekStart, weekday - 1);
 }
 
 export async function ensureWeekLessons(
@@ -53,12 +79,12 @@ export async function ensureWeekLessons(
     select: { settlementWeekday: true },
   });
 
+  const normalizedWeekStart = normalizeWeekStart(weekStart, workspace.settlementWeekday);
   const currentWeek = getWeekBounds(new Date(), workspace.settlementWeekday);
-  if (weekStart < currentWeek.start) {
+
+  if (normalizedWeekStart < currentWeek.start) {
     return;
   }
-
-  const weekEnd = getWeekEnd(weekStart);
 
   const slots = await prisma.scheduleSlot.findMany({
     where: { workspaceId, tutorId, isActive: true },
@@ -69,30 +95,23 @@ export async function ensureWeekLessons(
     return;
   }
 
-  const existingLessons = await prisma.lesson.findMany({
-    where: {
-      workspaceId,
-      tutorId,
-      scheduleSlotId: { not: null },
-      scheduledAt: { gte: weekStart, lte: weekEnd },
-    },
-    select: { scheduleSlotId: true, scheduledAt: true },
-  });
-
-  const existingKeys = new Set(
-    existingLessons
-      .filter((lesson) => lesson.scheduleSlotId)
-      .map((lesson) => slotLessonKey(lesson.scheduleSlotId!, lesson.scheduledAt))
-  );
-
   for (const slot of slots) {
-    const lessonDate = addDays(weekStart, slot.weekday - 1);
-    const key = slotLessonKey(slot.id, lessonDate);
-    if (existingKeys.has(key)) {
+    const lessonDate = lessonDateForSlot(normalizedWeekStart, slot.weekday);
+    const scheduledAt = parseStartTime(slot.startTime, lessonDate);
+    const { start: dayStart, end: dayEnd } = getDayBounds(lessonDate);
+
+    const existing = await prisma.lesson.findFirst({
+      where: {
+        workspaceId,
+        tutorId,
+        scheduleSlotId: slot.id,
+        scheduledAt: { gte: dayStart, lte: dayEnd },
+      },
+    });
+    if (existing) {
       continue;
     }
 
-    const scheduledAt = parseStartTime(slot.startTime, lessonDate);
     const data = {
       ...buildLessonCreateData(slot.student, {
         workspaceId,
@@ -106,7 +125,6 @@ export async function ensureWeekLessons(
     };
 
     await prisma.lesson.create({ data });
-    existingKeys.add(key);
   }
 }
 
