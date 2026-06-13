@@ -32,6 +32,7 @@ import {
   PAYMENT_STATUS_TONE,
   type DayAccent,
 } from "@/lib/status";
+import { formatLessonTime } from "@/lib/time";
 
 type LessonItem = {
   id: string;
@@ -66,20 +67,8 @@ const DAY_COUNT_COLORS: Record<DayAccent, string> = {
   warning: "text-[var(--accent-warning)]",
 };
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-}
-
-function formatWeekLabel(weekStart: string): string {
-  const start = new Date(`${weekStart}T00:00:00`);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
-  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
-  return `${start.toLocaleDateString("ru-RU", opts)} – ${end.toLocaleDateString("ru-RU", { ...opts, year: "numeric" })}`;
-}
-
 function formatHeroWhen(iso: string): string {
-  const time = formatTime(iso);
+  const time = formatLessonTime(iso);
   const lessonDate = formatDateKey(new Date(iso));
   const today = todayDateKey();
   if (lessonDate === today) return `Сегодня ${time}`;
@@ -88,6 +77,14 @@ function formatHeroWhen(iso: string): string {
   if (lessonDate === formatDateKey(tomorrow)) return `Завтра ${time}`;
   const d = new Date(iso);
   return `${d.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })} ${time}`;
+}
+
+function formatWeekLabel(weekStart: string): string {
+  const start = new Date(`${weekStart}T00:00:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
+  return `${start.toLocaleDateString("ru-RU", opts)} – ${end.toLocaleDateString("ru-RU", { ...opts, year: "numeric" })}`;
 }
 
 function shiftWeek(weekStart: string, deltaWeeks: number): string {
@@ -492,7 +489,7 @@ function ScheduleContent() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{lesson.studentName}</p>
                   <p className="text-sm text-[var(--tg-hint)]">
-                    {formatTime(lesson.scheduledAt)} · {lesson.durationMin} мин
+                    {formatLessonTime(lesson.scheduledAt)} · {lesson.durationMin} мин
                   </p>
                   <div className="mt-1 flex flex-wrap gap-1">
                     <Badge tone={LESSON_STATUS_TONE[lesson.status] ?? "default"}>
@@ -526,7 +523,7 @@ function ScheduleContent() {
             <div>
               <p className="font-semibold">{activeLesson.studentName}</p>
               <p className="text-sm text-[var(--tg-hint)]">
-                {formatTime(activeLesson.scheduledAt)} · {activeLesson.durationMin} мин
+                {formatLessonTime(activeLesson.scheduledAt)} · {activeLesson.durationMin} мин
               </p>
             </div>
 

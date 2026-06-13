@@ -13,6 +13,7 @@ import {
 } from "@/components/ui";
 import { getLessonStatusLabel, LESSON_STATUS_TONE } from "@/lib/status";
 import { formatDateKey } from "@/lib/schedule";
+import { formatLessonDateTime } from "@/lib/time";
 
 function formatRub(n: string | number) {
   return `${Number(n).toLocaleString("ru-RU")} ₽`;
@@ -92,13 +93,7 @@ function TutorHome({ data }: { data: Record<string, unknown> | null }) {
                     <div>
                       <p className="font-medium">{lesson.studentName ?? "Урок"}</p>
                       <p className="text-sm text-[var(--tg-hint)]">
-                        {new Date(lesson.scheduledAt).toLocaleDateString("ru-RU", {
-                          weekday: "short",
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {formatLessonDateTime(lesson.scheduledAt)}
                       </p>
                       <Badge tone={LESSON_STATUS_TONE[lesson.status] ?? "default"}>
                         {getLessonStatusLabel(lesson.status)}

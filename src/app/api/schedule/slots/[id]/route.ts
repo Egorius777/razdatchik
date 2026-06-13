@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { jsonError, requireAuth } from "@/lib/auth";
+import { deleteFuturePlannedLessonsForSlot } from "@/lib/schedule";
 import { serializeBigInt } from "@/lib/utils";
 
 const updateSlotSchema = z.object({
@@ -47,6 +48,15 @@ export async function PATCH(
       }
     }
 
+    const needsCleanup =
+      body.isActive === false ||
+      (body.weekday !== undefined && body.weekday !== slot.weekday) ||
+      (body.startTime !== undefined && body.startTime !== slot.startTime);
+
+    if (needsCleanup) {
+      await deleteFuturePlannedLessonsForSlot(auth.workspaceId, auth.userId, id);
+    }
+
     const updated = await prisma.scheduleSlot.update({
       where: { id },
       data: body,
@@ -80,6 +90,7 @@ export async function DELETE(
       return Response.json({ error: "Not found" }, { status: 404 });
     }
 
+    await deleteFuturePlannedLessonsForSlot(auth.workspaceId, auth.userId, id);
     await prisma.scheduleSlot.delete({ where: { id } });
     return Response.json({ ok: true });
   } catch (error) {

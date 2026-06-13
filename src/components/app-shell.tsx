@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTelegram } from "@/components/telegram-provider";
 import { Button, Card, Input, LoadingState, PageHeader } from "@/components/ui";
@@ -26,6 +26,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const timezoneSynced = useRef(false);
+
+  const syncTimezone = useCallback(async () => {
+    if (timezoneSynced.current) return;
+    timezoneSynced.current = true;
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      await fetch("/api/me", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timezone }),
+      });
+    } catch {
+      timezoneSynced.current = false;
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/auth/telegram");
@@ -48,6 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         throw new Error(err.error ?? "Auth failed");
       }
       const data = await refresh();
+      await syncTimezone();
       const invite = searchParams.get("invite");
       if (invite && !data.workspaceId) {
         await fetch("/api/workspaces/join", {
@@ -62,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [initData, refresh, searchParams]);
+  }, [initData, refresh, searchParams, syncTimezone]);
 
   useEffect(() => {
     refresh()
@@ -70,10 +87,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         if (!data.authenticated) {
           return login();
         }
+        void syncTimezone();
         setLoading(false);
       })
       .catch(() => login());
-  }, [login, refresh]);
+  }, [login, refresh, syncTimezone]);
 
   if (loading) return <LoadingState />;
   if (error) {

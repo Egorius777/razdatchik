@@ -1,13 +1,14 @@
-import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { jsonError, requireAuth } from "@/lib/auth";
 import {
-  addDays,
   ensureWeekLessons,
   formatDateKey,
-  getWeekEnd,
+  getTutorTimezone,
+  lessonDateKeyInTimezone,
   normalizeWeekStart,
   parseWeekStart,
+  weekDateKeys,
+  weekUtcBounds,
   WEEKDAY_LABELS,
 } from "@/lib/schedule";
 import { getWeekBounds, serializeBigInt } from "@/lib/utils";
@@ -41,6 +42,7 @@ export async function GET(request: Request) {
       : getWeekBounds(new Date(), workspace.settlementWeekday).start;
 
     const weekStart = normalizeWeekStart(rawWeekStart, workspace.settlementWeekday);
+    const weekStartKey = formatDateKey(weekStart);
 
     let tutorId: string;
     try {
@@ -58,14 +60,16 @@ export async function GET(request: Request) {
       }
     }
 
+    const timezone = await getTutorTimezone(tutorId);
+
     await ensureWeekLessons(auth.workspaceId, tutorId, weekStart, auth.userId);
 
-    const weekEnd = getWeekEnd(weekStart);
+    const { start, end } = weekUtcBounds(weekStartKey, timezone);
     const lessons = await prisma.lesson.findMany({
       where: {
         workspaceId: auth.workspaceId,
         tutorId,
-        scheduledAt: { gte: weekStart, lte: weekEnd },
+        scheduledAt: { gte: start, lte: end },
       },
       include: {
         student: { select: { name: true } },
@@ -93,11 +97,10 @@ export async function GET(request: Request) {
       return "none";
     }
 
-    const days = Array.from({ length: 7 }, (_, index) => {
-      const date = addDays(weekStart, index);
-      const dateKey = formatDateKey(date);
+    const dayKeys = weekDateKeys(weekStartKey, timezone);
+    const days = dayKeys.map((dateKey, index) => {
       const dayLessons = lessons
-        .filter((lesson) => formatDateKey(lesson.scheduledAt) === dateKey)
+        .filter((lesson) => lessonDateKeyInTimezone(lesson.scheduledAt, timezone) === dateKey)
         .map((lesson) => ({
           id: lesson.id,
           scheduledAt: lesson.scheduledAt.toISOString(),
@@ -119,8 +122,8 @@ export async function GET(request: Request) {
 
     return Response.json(
       serializeBigInt({
-        weekStart: formatDateKey(weekStart),
-        weekEnd: formatDateKey(weekEnd),
+        weekStart: weekStartKey,
+        weekEnd: dayKeys[6],
         days,
       })
     );

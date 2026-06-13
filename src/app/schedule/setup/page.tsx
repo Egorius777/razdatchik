@@ -214,6 +214,9 @@ function SetupContent() {
             value={form.startTime}
             onChange={(e) => setForm({ ...form, startTime: e.target.value })}
           />
+          <p className="text-xs text-[var(--tg-hint)]">
+            Указывается в вашем часовом поясе, в расписании покажем и по МСК
+          </p>
           <Input
             label="Длительность, мин"
             type="number"

@@ -6,8 +6,12 @@ import {
   normalizeWeekStart,
   parseStartTime,
   parseWeekStart,
+  pickDuplicateLessonIdsToDeleteInTimezone,
+  scheduledAtFromSlot,
   shiftWeekDateKey,
+  shouldDeleteStalePlannedLesson,
   slotLessonKey,
+  type PlannedLessonRef,
 } from "@/lib/schedule";
 
 describe("schedule helpers", () => {
@@ -19,7 +23,7 @@ describe("schedule helpers", () => {
 
   it("builds slot lesson key for duplicate detection", () => {
     const date = parseWeekStart("2025-06-10");
-    expect(slotLessonKey("slot-1", date)).toBe("slot-1:2025-06-10");
+    expect(slotLessonKey("slot-1", formatDateKey(date))).toBe("slot-1:2025-06-10");
   });
 
   it("adds days within the same week", () => {
@@ -73,5 +77,90 @@ describe("schedule helpers", () => {
     const mondaySlotDay = lessonDateForSlot(normalized, 1);
     expect(formatDateKey(mondaySlotDay)).toBe("2025-06-09");
     expect(formatDateKey(mondaySlotDay)).not.toBe("2025-06-11");
+  });
+});
+
+describe("timezone materialization", () => {
+  it("stores Monday 11:00 Asia/Yekaterinburg as 09:00 MSK", () => {
+    const at = scheduledAtFromSlot("2025-06-09", 1, "11:00", "Asia/Yekaterinburg");
+    const local = at.toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Asia/Yekaterinburg",
+    });
+    const msk = at.toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Moscow",
+    });
+    expect(local).toBe("11:00");
+    expect(msk).toBe("09:00");
+  });
+});
+
+describe("stale lesson cleanup", () => {
+  const activeSlots = [{ id: "slot-1", weekday: 1 }];
+  const tz = "Europe/Moscow";
+
+  function plannedLesson(overrides: Partial<PlannedLessonRef> = {}): PlannedLessonRef {
+    return {
+      id: "lesson-1",
+      status: "Planned",
+      scheduleSlotId: "slot-1",
+      scheduledAt: scheduledAtFromSlot("2025-06-09", 1, "11:00", tz),
+      createdAt: new Date("2025-06-01"),
+      paymentCount: 0,
+      ...overrides,
+    };
+  }
+
+  it("deletes planned lesson on wrong weekday", () => {
+    const lesson = plannedLesson({
+      scheduledAt: scheduledAtFromSlot("2025-06-09", 2, "11:00", tz),
+    });
+    expect(shouldDeleteStalePlannedLesson(lesson, activeSlots, tz)).toBe(true);
+  });
+
+  it("keeps Done lesson even on wrong weekday", () => {
+    const lesson = plannedLesson({
+      status: "Done",
+      scheduledAt: scheduledAtFromSlot("2025-06-09", 2, "11:00", tz),
+    });
+    expect(shouldDeleteStalePlannedLesson(lesson, activeSlots, tz)).toBe(false);
+  });
+
+  it("keeps lesson with payment", () => {
+    expect(shouldDeleteStalePlannedLesson(plannedLesson({ paymentCount: 1 }), activeSlots, tz)).toBe(
+      false
+    );
+  });
+
+  it("keeps one-off lesson without scheduleSlotId", () => {
+    expect(
+      shouldDeleteStalePlannedLesson(plannedLesson({ scheduleSlotId: null }), activeSlots, tz)
+    ).toBe(false);
+  });
+
+  it("dedupes duplicate planned lessons on same slot and day", () => {
+    const scheduledAt = scheduledAtFromSlot("2025-06-09", 1, "11:00", tz);
+    const lessons: PlannedLessonRef[] = [
+      {
+        id: "keep",
+        status: "Planned",
+        scheduleSlotId: "slot-1",
+        scheduledAt,
+        createdAt: new Date("2025-06-01"),
+        paymentCount: 0,
+      },
+      {
+        id: "drop",
+        status: "Planned",
+        scheduleSlotId: "slot-1",
+        scheduledAt,
+        createdAt: new Date("2025-06-02"),
+        paymentCount: 0,
+      },
+    ];
+    expect(pickDuplicateLessonIdsToDeleteInTimezone(lessons, tz)).toEqual(["drop"]);
   });
 });
